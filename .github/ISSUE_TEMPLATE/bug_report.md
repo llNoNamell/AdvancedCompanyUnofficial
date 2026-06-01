@@ -1,43 +1,60 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: ''
-labels: ''
+title: '[Bug]: '
+labels: bug
 assignees: ''
-
 ---
 
-**Describe the bug**
+## Before submitting
+
+Please attach your `LogOutput.log` file. Issues without `LogOutput.log` may be closed because mod compatibility problems cannot be diagnosed reliably without logs.
+
+You can usually find it here:
+
+```text
+BepInEx/LogOutput.log
+```
+
+If this is a multiplayer-specific issue, please provide logs from the host and the affected clients.
+
+## Describe the bug
+
 A clear and concise description of what the bug is.
 
-**To Reproduce**
+## To reproduce
+
 Steps to reproduce the behavior:
+
 1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
+2. Click on '...'
+3. Scroll down to '...'
 4. See error
 
-**Expected behavior**
+## Expected behavior
+
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
+## Screenshots
+
 If applicable, add screenshots to help explain your problem.
 
-**Additional context**
+## LogOutput.log
+
+Attach `BepInEx/LogOutput.log` here, or paste the relevant error section.
+
+## Mod list
+
+Please provide a list of all mods you have installed.
+
+In your mod manager, go to Settings, enable **Show dependency strings**, and copy the text here. Exporting your profile and attaching it may also help.
+
+## Additional context
+
 Add any other context about the problem here.
 
-**Logfiles**
-Please attach log files to your issue. If this is a multiplayer specific issue please provide logs of the host and the affected clients.
+## Checklist
 
-You can find the logs of the game in %appdata%/../LocalLow/ZeekerssRBLX/Lethal Company/
-
-The log file is called "Player.log" (or just Player if you have file extensions hidden)
-
-Please note: These logs will get overwritten everytime you start the game. So please get your logs right when the issue occured.
-
-**Add a list of all of your mods**
-
-Please provide a list of all mods you have installed. 
-
-Go to Settings and select "Show dependency strings" and copy the text here.
-Exporting your profile and attaching it to the issue might also help.
+- [ ] I have attached or pasted my `LogOutput.log`.
+- [ ] I am using the latest version of AdvancedCompanyUnofficial.
+- [ ] I have listed my mod list or profile code.
