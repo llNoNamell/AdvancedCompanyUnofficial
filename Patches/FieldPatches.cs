@@ -104,8 +104,17 @@ namespace AdvancedCompany.Patches
                     //Plugin.Log.LogMessage(type.FullName + "." + method.Name);
                     var instructions = HarmonyLib.PatchProcessor.ReadMethodBody(method);
                     var needsPatch = false;
+                    var hasBrokenIL = false;
                     foreach (var inst in instructions)
                     {
+                        // An opcode that requires an operand (not InlineNone) whose operand
+                        // resolved to null means the metadata token could not be resolved -
+                        // usually a mod compiled against a different game/library version.
+                        // Such IL cannot be rewritten: Harmony throws "newobj NULL" when it
+                        // writes the method body back, so flag it and skip up front.
+                        if (inst.Value == null && inst.Key.OperandType != OperandType.InlineNone)
+                            hasBrokenIL = true;
+
                         if (inst.Key == OpCodes.Ldfld && inst.Value is FieldInfo f)
                         {
                             foreach (var kv in Game.Manager.Patches)
@@ -118,7 +127,14 @@ namespace AdvancedCompany.Patches
                             }
                         }
                     }
-                    if (needsPatch)
+                    if (needsPatch && hasBrokenIL)
+                    {
+                        // Patching would fail inside Harmony's IL writer anyway. AC's field
+                        // interception simply will not apply inside this method.
+                        Plugin.Log.LogWarning("Skipping field patch for " + method.DeclaringType.FullName + "->" + method.Name +
+                            ": method contains unresolvable IL (likely a version-mismatched mod). AC field interception will not apply here.");
+                    }
+                    else if (needsPatch)
                     {
                         try
                         {
@@ -128,8 +144,11 @@ namespace AdvancedCompany.Patches
                         }
                         catch (Exception e)
                         {
-                            Plugin.Log.LogError("Error while transpiling " + method.DeclaringType.FullName + "->" + method.Name + ":");
-                            Plugin.Log.LogError(e);
+                            // Safety net for the rare "reads fine but fails on write" case the
+                            // pre-scan cannot catch. This is non-fatal, so log a warning and
+                            // keep scanning the remaining methods instead of an error.
+                            Plugin.Log.LogWarning("Could not patch " + method.DeclaringType.FullName + "->" + method.Name +
+                                " (skipped, non-fatal): " + e.Message);
                         }
                     }
                 }

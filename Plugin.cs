@@ -25,7 +25,7 @@ namespace AdvancedCompany
     [BepInDependency(DawnLib.PLUGIN_GUID, BepInDependency.DependencyFlags.HardDependency)]
     public class Plugin : BaseUnityPlugin
     {
-        public const string Version = "1.1.32";
+        public const string Version = "1.0.3";
         private const string GUID = "com.potatoepet.AdvancedCompany";
         internal static ManualLogSource Log;
         internal static Plugin Instance;
@@ -81,7 +81,7 @@ namespace AdvancedCompany
         {
             try
             {
-                
+
                 Log = base.Logger;
 
                 Lib.Mod.RegisterRequiredMod(this);
@@ -104,7 +104,7 @@ namespace AdvancedCompany
                         CheckAssembly(pl.Value.Instance.GetType().Assembly);
                     }
                 }
-                
+
                 AppDomain.CurrentDomain.AssemblyLoad += CurrentDomain_AssemblyLoad;
                 var assemblies = AppDomain.CurrentDomain.GetAssemblies();
                 foreach (var assembly in assemblies)
@@ -128,7 +128,7 @@ namespace AdvancedCompany
                 foreach (var f in Directory.EnumerateFiles(BepInEx.Paths.PluginPath, "*.cosmetics", SearchOption.AllDirectories))
                 {
                     var assetBundle = AssetBundle.LoadFromFile(f);
-                    AdvancedCompany.Lib.Cosmetics.LoadCosmeticsFromBundle(assetBundle); 
+                    AdvancedCompany.Lib.Cosmetics.LoadCosmeticsFromBundle(assetBundle);
                 }
                 foreach (var f in Directory.EnumerateFiles(BepInEx.Paths.PluginPath, "MoreCompany.dll", SearchOption.AllDirectories))
                     ExtractMoreCompanyAssets(f);
