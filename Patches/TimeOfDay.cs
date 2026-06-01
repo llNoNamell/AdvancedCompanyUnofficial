@@ -16,7 +16,7 @@ namespace AdvancedCompany.Patches
     {
         public static float GetMultiplier()
         {
-            return 700f / Mathf.Max(1f, (float) ServerConfiguration.Instance.General.DayLength);
+            return 700f / Mathf.Max(1f, (float)ServerConfiguration.Instance.General.DayLength);
         }
 
         [HarmonyPatch(typeof(global::TimeOfDay), "MoveGlobalTime")]
@@ -25,19 +25,32 @@ namespace AdvancedCompany.Patches
         {
             Plugin.Log.LogDebug("Patching TimeOfDay->MoveGlobalTime...");
 
-            var method = typeof(TimeOfDay).GetMethod("GetMultiplier", BindingFlags.Static | BindingFlags.FlattenHierarchy | BindingFlags.Public);
+            var method = typeof(TimeOfDay).GetMethod(
+                nameof(GetMultiplier),
+                BindingFlags.Static | BindingFlags.FlattenHierarchy | BindingFlags.Public
+            );
 
             var inst = new List<CodeInstruction>(instructions);
+
             for (var i = 0; i < inst.Count; i++)
             {
-                if (inst[i].opcode == OpCodes.Ldfld && inst[i].operand.ToString().Contains("globalTimeSpeedMultiplier"))
+                if (inst[i].opcode == OpCodes.Ldfld
+                    && inst[i].operand is FieldInfo field
+                    && field.Name == "globalTimeSpeedMultiplier")
                 {
-                    inst.Insert(i + 2, new CodeInstruction(OpCodes.Mul));
-                    inst.Insert(i + 2, new CodeInstruction(OpCodes.Call, method));
-                    break;
+                    inst.InsertRange(i + 1, new[]
+                    {
+                        new CodeInstruction(OpCodes.Call, method),
+                        new CodeInstruction(OpCodes.Mul)
+                    });
+
+                    Plugin.Log.LogDebug("Added day length multiplier after globalTimeSpeedMultiplier.");
+                    Plugin.Log.LogDebug("Patched TimeOfDay->MoveGlobalTime...");
+                    return inst.AsEnumerable();
                 }
             }
-            Plugin.Log.LogDebug("Patched TimeOfDay->MoveGlobalTime...");
+
+            Plugin.Log.LogWarning("Could not find TimeOfDay.globalTimeSpeedMultiplier. Skipping MoveGlobalTime patch.");
             return inst.AsEnumerable();
         }
     }

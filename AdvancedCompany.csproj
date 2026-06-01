@@ -32,7 +32,9 @@
 		<PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all">
 		  <TreatAsUsed>true</TreatAsUsed>
 		</PackageReference>
-
+		<PackageReference Include="TeamXiaolan.DawnLib" Version="0.9.23" PrivateAssets="all">
+			<TreatAsUsed>true</TreatAsUsed>
+		</PackageReference>
 	</ItemGroup>
 	<ItemGroup>
 		<Reference Include="Coroner" Publicize="true">

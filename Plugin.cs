@@ -15,12 +15,14 @@ using System.Runtime.CompilerServices;
 using UnityEngine.Profiling;
 using Steamworks;
 using AdvancedCompany.Lib;
+using Dawn;
 
 [assembly: AssemblyMetadata("AdvancedCompanyIgnore", "True")]
 namespace AdvancedCompany
 {
     [BepInPlugin(GUID, "AdvancedCompany", Version)]
     [BepInDependency("com.rune580.LethalCompanyInputUtils", BepInDependency.DependencyFlags.HardDependency)]
+    [BepInDependency(DawnLib.PLUGIN_GUID, BepInDependency.DependencyFlags.HardDependency)]
     public class Plugin : BaseUnityPlugin
     {
         public const string Version = "1.1.32";
@@ -197,6 +199,12 @@ namespace AdvancedCompany
             "UniverseLib",
             "AmazingAssets",
             "MMHOOK",
+
+            // DawnLib hard compatibility:
+            // AC should not scan or transpile DawnLib internals.
+            // DawnLib owns its own terminal/shop/predicate compatibility layer.
+            "com.github.teamxiaolan.dawnlib",
+            "DawnLib",
         };
         private void CheckAssembly(Assembly assembly)
         {

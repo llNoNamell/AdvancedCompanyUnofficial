@@ -25,54 +25,17 @@ namespace AdvancedCompany.Patches
     internal class Terminal
     {
 
-        [HarmonyPatch(typeof(global::Terminal), "TextPostProcess")]
-        [HarmonyTranspiler]
-        static IEnumerable<CodeInstruction> PatchTextPostProcess(IEnumerable<CodeInstruction> instructions)
+        // DawnLib compatibility:
+        // AC no longer transpiles Terminal.TextPostProcess's buyableItemsList loop.
+        // DawnLib owns terminal shop visibility. AC keeps LoadNewNodeIfAffordable
+        // as a final purchase guard below.
+        //
+        // Original AC transpiler disabled because it conflicts with DawnLib's
+        // Terminal.TextPostProcess IL hook around buyableItemsList.
+        static IEnumerable<CodeInstruction> PatchTextPostProcess_Disabled(IEnumerable<CodeInstruction> instructions)
         {
-            Plugin.Log.LogDebug("Patching Terminal->TextPostProcess...");
-            var inst = new List<CodeInstruction>(instructions);
-            for (var i = 0; i < inst.Count; i++)
-            {
-                if ((inst[i].opcode == OpCodes.Ldstr && inst[i].operand.ToString() == "[No items in stock!]"))
-                {
-                    object branchTarget = null;
-                    // find branch
-                    for (var j = i + 1; j < inst.Count; j++)
-                    {
-                        if (inst[j].opcode == OpCodes.Beq_S || inst[j].opcode == OpCodes.Beq)
-                        {
-                            branchTarget = inst[j].operand;
-                            break;
-                        }
-                    }
-                    if (branchTarget != null)
-                    {
-                        var inserts = new List<CodeInstruction>() {
-                            inst[i + 11],
-                            inst[i + 12],
-                            inst[i + 13],
-                            inst[i + 14],
-                            new CodeInstruction(OpCodes.Call, typeof(Game.Manager.Items).GetMethod("IsBuyable", BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy)),
-                            new CodeInstruction(OpCodes.Brfalse, branchTarget),
-                            new CodeInstruction(inst[i + 9].opcode, inst[i + 9].operand)
-                        };
-
-                        inst[i + 9].opcode = inserts[0].opcode;
-                        inst[i + 9].operand = inserts[0].operand;
-
-                        for (var k = inserts.Count - 1; k >= 1; k--)
-                            inst.Insert(i + 10, inserts[k]);
-                        Plugin.Log.LogDebug("Added activation check");
-                    }
-                    else
-                    {
-                        Plugin.Log.LogWarning("Branch not found. Cant apply! Was the game updated?");
-                    }
-                    break;
-                }
-            }
-            Plugin.Log.LogDebug("Patched Terminal->TextPostProcess!");
-            return inst.AsEnumerable();
+            Plugin.Log.LogDebug("Skipping AC Terminal.TextPostProcess transpiler; DawnLib handles terminal shop display.");
+            return instructions;
         }
 
 

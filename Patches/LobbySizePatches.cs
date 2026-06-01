@@ -766,7 +766,7 @@ namespace AdvancedCompany.Patches
             return inst.AsEnumerable();
         }
 
-        //[HarmonyPatch(typeof(global::SoundManager), "SetPlayerVoiceFilters")]   //第一次修改
+        //[HarmonyPatch(typeof(global::SoundManager), "SetPlayerVoiceFilters")] 
         //[HarmonyTranspiler]
         static IEnumerable<CodeInstruction> PatchSetPlayerVoiceFilters(IEnumerable<CodeInstruction> instructions)
         {
@@ -788,16 +788,26 @@ namespace AdvancedCompany.Patches
         }
 
         [HarmonyPatch(typeof(global::SoundManager), "Start")]
-        [HarmonyPrefix]
-        public static bool ChangeMixerSetting()
+        [HarmonyPostfix]
+        public static void ChangeMixerSetting()
         {
             try
             {
                 var playerCount = ServerConfiguration.Instance.Lobby.LobbySize;
+
                 Plugin.Log.LogInfo("Changing audio mixer and expanding voice chat slots for " + playerCount + " players.");
+
+                if (global::SoundManager.Instance == null)
+                {
+                    Plugin.Log.LogWarning("SoundManager.Instance is null. Skipping voice mixer expansion.");
+                    return;
+                }
+
                 if (OriginalMixer == null)
-                    OriginalMixer = SoundManager.Instance.diageticMixer;
-                var mixer = NewAudioMixer32;
+                    OriginalMixer = global::SoundManager.Instance.diageticMixer;
+
+                var mixer = NewAudioMixer4;
+
                 if (playerCount > 28)
                     mixer = NewAudioMixer32;
                 else if (playerCount > 24)
@@ -815,50 +825,87 @@ namespace AdvancedCompany.Patches
                 else
                     mixer = NewAudioMixer4;
 
+                if (mixer == null)
+                {
+                    Plugin.Log.LogWarning("AdvancedCompany audio mixer is null. Keeping original SoundManager mixer.");
+                    PlayerMixer = OriginalMixer;
+                    return;
+                }
+
                 Plugin.Log.LogInfo("New AudioMixer: " + mixer.name);
 
-                mixer.outputAudioMixerGroup = OriginalMixer.FindMatchingGroups("Master")[0];
+                if (OriginalMixer != null)
+                {
+                    var masterGroups = OriginalMixer.FindMatchingGroups("Master");
+
+                    if (masterGroups != null && masterGroups.Length > 0)
+                        mixer.outputAudioMixerGroup = masterGroups[0];
+                }
+
                 PlayerMixer = mixer;
+
+                var oldPitches = global::SoundManager.Instance.playerVoicePitches;
+                var oldPitchTargets = global::SoundManager.Instance.playerVoicePitchTargets;
+                var oldVolumes = global::SoundManager.Instance.playerVoiceVolumes;
+                var oldLerpSpeed = global::SoundManager.Instance.playerVoicePitchLerpSpeed;
+                var oldMixers = global::SoundManager.Instance.playerVoiceMixers;
 
                 var newPlayerVoicePitches = new float[playerCount];
                 var newPlayerVoicePitchTargets = new float[playerCount];
                 var newPlayerVoiceVolumes = new float[playerCount];
                 var newPlayerVoicePitchLerpSpeed = new float[playerCount];
-                var newPlayerVoiceMixers = new AudioMixerGroup[playerCount];
+                var newPlayerVoiceMixers = new UnityEngine.Audio.AudioMixerGroup[playerCount];
 
                 for (var i = 0; i < playerCount; i++)
                 {
-                    newPlayerVoicePitches[i] = 1f;
-                    newPlayerVoicePitchTargets[i] = 1f;
-                    newPlayerVoiceVolumes[i] = 0.5f;
-                    newPlayerVoicePitchLerpSpeed[i] = 3f;
-                    newPlayerVoiceMixers[i] = mixer.FindMatchingGroups("VoicePlayer" + i)[0];
+                    newPlayerVoicePitches[i] =
+                        oldPitches != null && i < oldPitches.Length ? oldPitches[i] : 1f;
+
+                    newPlayerVoicePitchTargets[i] =
+                        oldPitchTargets != null && i < oldPitchTargets.Length ? oldPitchTargets[i] : 1f;
+
+                    newPlayerVoiceVolumes[i] =
+                        oldVolumes != null && i < oldVolumes.Length ? oldVolumes[i] : 0.5f;
+
+                    newPlayerVoicePitchLerpSpeed[i] =
+                        oldLerpSpeed != null && i < oldLerpSpeed.Length ? oldLerpSpeed[i] : 3f;
+
+                    UnityEngine.Audio.AudioMixerGroup group = null;
+
+                    var groups = mixer.FindMatchingGroups("VoicePlayer" + i);
+
+                    if (groups != null && groups.Length > 0)
+                        group = groups[0];
+
+                    if (group == null && oldMixers != null && i < oldMixers.Length)
+                        group = oldMixers[i];
+
+                    if (group == null)
+                    {
+                        var fallbackGroups = mixer.FindMatchingGroups("VoicePlayer0");
+
+                        if (fallbackGroups != null && fallbackGroups.Length > 0)
+                            group = fallbackGroups[0];
+                    }
+
+                    if (group == null)
+                        Plugin.Log.LogWarning("Could not find AudioMixerGroup for VoicePlayer" + i);
+
+                    newPlayerVoiceMixers[i] = group;
                 }
 
-                SoundManager.Instance.playerVoicePitches = newPlayerVoicePitches;
-                SoundManager.Instance.playerVoicePitchTargets = newPlayerVoicePitchTargets;
-                SoundManager.Instance.playerVoiceVolumes = newPlayerVoiceVolumes;
-                SoundManager.Instance.playerVoicePitchLerpSpeed = newPlayerVoicePitchLerpSpeed;
-                SoundManager.Instance.playerVoiceMixers = newPlayerVoiceMixers;
+                global::SoundManager.Instance.diageticMixer = mixer;
+                global::SoundManager.Instance.playerVoicePitches = newPlayerVoicePitches;
+                global::SoundManager.Instance.playerVoicePitchTargets = newPlayerVoicePitchTargets;
+                global::SoundManager.Instance.playerVoiceVolumes = newPlayerVoiceVolumes;
+                global::SoundManager.Instance.playerVoicePitchLerpSpeed = newPlayerVoicePitchLerpSpeed;
+                global::SoundManager.Instance.playerVoiceMixers = newPlayerVoiceMixers;
             }
             catch (Exception e)
             {
-                Plugin.Log.LogError("Error while initializing SoundManager. Disconnecting...");
+                Plugin.Log.LogError("Error while expanding SoundManager voice mixer data.");
                 Plugin.Log.LogError(e);
-                if (global::GameNetworkManager.Instance != null)
-                {
-                    global::GameNetworkManager.Instance.disconnectionReasonMessage = "SoundManager initialization failed!";
-                    global::GameNetworkManager.Instance.Disconnect();
-                }
             }
-            return false;
-        }
-
-        [HarmonyPatch(typeof(global::SoundManager), "SetPlayerVoiceFilters")]
-        [HarmonyPrefix]
-        static bool DisableSetPlayerVoiceFilters()
-        {
-            return false;
         }
 
         private static ulong CurrentHandshakePlayer = 0;
